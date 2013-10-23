@@ -20,11 +20,16 @@
 #include <utils/Log.h>
 #include <utils/misc.h>
 
-#include <ui/SurfaceComposerClient.h>
+#include <binder/IPCThreadState.h>
+#include <binder/ProcessState.h>
+#include <binder/IServiceManager.h>
+
+#include <surfaceflinger/Surface.h>
+#include <surfaceflinger/ISurface.h>
+#include <surfaceflinger/SurfaceComposerClient.h>
+
 #include <ui/Region.h>
 #include <ui/Rect.h>
-
-#include <surfaceflinger/SurfaceFlinger.h>
 
 #include "MokoidSurface.h"
 
@@ -39,12 +44,12 @@ void MokoidSurface::lockScreen(void)
 
 	surfaceflinger_surface->lock(&info);
 
-    drawBuffer = (char *)info.bits;
+        drawBuffer = (char *)info.bits;
 }
 
 char *MokoidSurface::getBuffer(void)
 {
-    return drawBuffer;
+        return drawBuffer;
 }
 
 void MokoidSurface::unlockScreen(void)
@@ -55,6 +60,8 @@ void MokoidSurface::unlockScreen(void)
 int MokoidSurface::getFormat(int depth)
 {
 	int fmt;
+
+	LOGI("getFormat: depth = %d", depth);
 
 	switch (depth) {
 	case 16:
@@ -76,17 +83,18 @@ MokoidSurface::~MokoidSurface()
 }
 
 MokoidSurface::MokoidSurface() :
-    surfaceflinger_surface(NULL),
-	surfaceflinger_client(NULL)
+	surfaceflinger_client(NULL),
+	surfaceflinger_surface(NULL),
+	surfaceflinger_surfaceControl(NULL)
 {
 }
 
 int MokoidSurface::clientInit(int x, int y, int w, int h, int *stride)
 {
-	int depth = 32;
+	int depth = 16;
 	int fmt;
 
-	surfaceflinger_client = new SurfaceComposerClient;
+	surfaceflinger_client = new SurfaceComposerClient();
 	if (surfaceflinger_client == NULL) {
 		LOGE("failed to create client\n");
 		return 0;
@@ -98,21 +106,38 @@ int MokoidSurface::clientInit(int x, int y, int w, int h, int *stride)
 		return 0;
 	}
 
-	surfaceflinger_surface = 
-        surfaceflinger_client->createSurface(getpid(), 0, w, h, fmt, ISurfaceComposer::eFXSurfaceMokoid);
-	if (surfaceflinger_surface == NULL) {
-		LOGE("failed to create surface\n");
+	// Refactor in Android 4.0
+	surfaceflinger_surfaceControl = 
+		surfaceflinger_client->createSurface(getpid(), 0, w, h, fmt);
+	if (surfaceflinger_surfaceControl == NULL) {
+		LOGE("failed to create surfaceControl\n");
 		return 0;
 	}
 
-	surfaceflinger_client->openTransaction();
-	surfaceflinger_surface->setPosition(x, y);
-	surfaceflinger_surface->setLayer(INT_MAX);
-	//surfaceflinger_surface->setInverse();
-	surfaceflinger_client->closeTransaction();
+	// Refactor in Android 4.0
+	surfaceflinger_surface = surfaceflinger_surfaceControl->getSurface();
+
+	//surfaceflinger_client->openGlobalTransaction();
+	SurfaceComposerClient::openGlobalTransaction();
+	surfaceflinger_surfaceControl->setPosition(x, y);
+	surfaceflinger_surfaceControl->setLayer(INT_MAX);
+	surfaceflinger_client->closeGlobalTransaction();
+	//SurfaceComposerClient::closeGlobalTransaction();
 
 	if (stride)
 		*stride = w * depth / 8;
+
+	// Get native window
+	Parcel parcel;
+	SurfaceControl::writeSurfaceToParcel(surfaceflinger_surfaceControl, &parcel);
+	parcel.setDataPosition(0);
+	sp<Surface> surface = Surface::readFromParcel(parcel);
+	ANativeWindow* window = surface.get();
+
+	LOGI("mokoid native window = %p", window);
+
+	int err = native_window_set_buffer_count(window, 4);
+	ANativeWindowBuffer* buffer;
 
 	return 1;
 }

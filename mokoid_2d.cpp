@@ -2,9 +2,10 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include <utils/IPCThreadState.h>
-#include <utils/ProcessState.h>
-#include <utils/IServiceManager.h>
+#include <binder/IPCThreadState.h>
+#include <binder/ProcessState.h>
+#include <binder/IServiceManager.h>
+
 #include <utils/Log.h>
 
 #include "MokoidSurface.h"
@@ -41,20 +42,21 @@ sp<MokoidSurface> surface;
 
 static void demo(int x, int y, int w, int h)
 {
-	char *buf;
-	int stride;
+    char *buf;
+    int stride;
 
     LOGI("MokoidSurface: we use sp<> template.");
     surface = new MokoidSurface();
 
-	if (!surface->clientInit(x, y, w, h, &stride)) {
-		LOGI("failed to initialize a surface\n");
-		return;
-	} 
-	surface->lockScreen();
+    if (!surface->clientInit(x, y, w, h, &stride)) {
+	LOGI("failed to initialize a surface\n");
+	return;
+    } 
+
+    surface->lockScreen();
     buf = surface->getBuffer();
-	draw(buf, w, h, stride);
-	surface->unlockScreen();
+    draw(buf, w, h, stride);
+    surface->unlockScreen();
 }
 
 int main(int argc, char **argv)
@@ -62,14 +64,15 @@ int main(int argc, char **argv)
     //sp<ProcessState> proc(ProcessState::self());
     LOGI("MokoidSurface is started.");
 
-	demo(10, 10, 200, 300);
-    sleep(5);
-
-	demo(20, 20, 250, 300);
-    sleep(5);
-
     ProcessState::self()->startThreadPool();
+
+    demo(10, 10, 160, 240);
+    sleep(5);
+
+    demo(20, 20, 160, 240);
+    sleep(5);
+
     IPCThreadState::self()->joinThreadPool();
 
-	return 0;
+    return 0;
 }

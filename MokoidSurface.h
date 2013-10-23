@@ -18,12 +18,14 @@
 #ifndef MOKOID_SURFACE_H
 #define MOKOID_SURFACE_H
 
-#include <utils/threads.h>
-#include <utils/MemoryBase.h>
-#include <utils/MemoryHeapBase.h>
-#include <utils/threads.h>
+#include <binder/MemoryBase.h>
+#include <binder/MemoryHeapBase.h>
 
-#include <ui/SurfaceComposerClient.h>
+#include <utils/threads.h>
+#include <utils/RefBase.h>
+
+#include <surfaceflinger/SurfaceComposerClient.h>
+
 #include <ui/Region.h>
 #include <ui/Rect.h>
 
@@ -45,6 +47,13 @@ public:
 private:
     sp<SurfaceComposerClient> surfaceflinger_client;
     sp<Surface> surfaceflinger_surface;
+
+    // Android 4.0
+    sp<SurfaceControl> surfaceflinger_surfaceControl;
+
+    // Native window
+    ANativeWindow* window;
+    ANativeWindowBuffer* window_buffer;
 
     char *drawBuffer;
 

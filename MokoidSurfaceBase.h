@@ -22,6 +22,7 @@
 #include <utils/MemoryBase.h>
 #include <utils/MemoryHeapBase.h>
 #include <utils/threads.h>
+#include <utils/RefBase.h>
 
 #include <ui/SurfaceComposerClient.h>
 #include <ui/Region.h>
